@@ -1,9 +1,12 @@
-package dev.gpa3.gcfjava;
+package dev.gpa3.gcfjava.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import dev.gpa3.gcfjava.model.Time;
+import dev.gpa3.gcfjava.service.TimeService;
 
 import java.util.List;
 

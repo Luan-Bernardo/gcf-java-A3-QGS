@@ -1,4 +1,4 @@
-package dev.gpa3.gcfjava;
+package dev.gpa3.gcfjava.controller;
 
 import org.springframework.boot.web.servlet.error.ErrorController;
 import org.springframework.stereotype.Controller;
