@@ -30,7 +30,7 @@ function carregarCampeonatos() {
                         <p>${campeonato.ano}</p>
                         <p>${campeonato.times.length} times participantes</p>
                         <p>Início: ${utils.formatarData(campeonato.dataInicio)}</p>
-                        <a href="campeonato.html?id=${campeonato.id}" class="btn">Ver detalhes</a>
+                        <a href="../html/campeonato.html?id=${campeonato.id}" class="btn">Ver detalhes</a>
                     </div>
                 `;
                 
