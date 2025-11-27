@@ -1,67 +1,35 @@
 package dev.gpa3.gcfjava.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+/**
+ * Entidade JPA representando a tabela 'time' no banco de dados.
+ */
 @Entity
-// Má prática: nome da tabela sem prefixo ou convenção
 @Table(name = "time")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Time {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    // Má prática: nome da coluna sem prefixo
+    @Column(name = "id", nullable = false)
     private Long id;
     
-    // Má prática: nome das colunas com iniciais maiúsculas
-    @Column(name = "nome")
+    @Column(name = "nome", nullable = false, length = 100)
     private String nome;
     
-    @Column(name = "cidade")
+    @Column(name = "cidade", nullable = false, length = 100)
     private String cidade;
     
-    @Column(name = "urlescudo")
+    @Column(name = "url_escudo", length = 500)
     private String urlEscudo;
-    
-    // Má prática: construtores, getters e setters públicos
-    public Time() {}
-    
-    public Time(Long id, String nome, String cidade, String urlEscudo) {
-        this.id = id;
-        this.nome = nome;
-        this.cidade = cidade;
-        this.urlEscudo = urlEscudo;
-    }
-    
-    // Má prática: getters e setters sem validação
-    public Long getId() {
-        return id;
-    }
-    
-    public void setId(Long id) {
-        this.id = id;
-    }
-    
-    public String getNome() {
-        return nome;
-    }
-    
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
-    
-    public String getCidade() {
-        return cidade;
-    }
-    
-    public void setCidade(String cidade) {
-        this.cidade = cidade;
-    }
-    
-    public String getUrlEscudo() {
-        return urlEscudo;
-    }
-    
-    public void setUrlEscudo(String urlEscudo) {
-        this.urlEscudo = urlEscudo;
-    }
 }

@@ -1,26 +1,33 @@
+/**
+ * Controller para gerenciamento de Times.
+ */
 document.addEventListener('DOMContentLoaded', () => {
     carregarTimes();
     configurarFormulario();
     configurarEventos();
 });
 
-// Função para carregar a lista de times
 function carregarTimes() {
-    fetch(`${API_BASE_URL}/times`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erro ao carregar times');
-            }
-            return response.json();
-        })
+    TimeService.listarTimes()
         .then(times => {
             const listaTimes = document.getElementById('listaTimes');
             listaTimes.innerHTML = '';
             
             times.forEach(time => {
                 const row = document.createElement('tr');
+                
+                let nomeComEscudo = time.nome;
+                if (time.urlEscudo) {
+                    nomeComEscudo = `
+                        <div class="time-nome-container">
+                            <img src="${time.urlEscudo}" alt="Escudo ${time.nome}" class="escudo-time">
+                            <span>${time.nome}</span>
+                        </div>
+                    `;
+                }
+                
                 row.innerHTML = `
-                    <td>${time.nome}</td>
+                    <td>${nomeComEscudo}</td>
                     <td>${time.cidade}</td>
                     <td class="actions">
                         <button class="btn btn-sm btn-edit" onclick="editarTime(${time.id})">
@@ -33,65 +40,46 @@ function carregarTimes() {
                 `;
                 listaTimes.appendChild(row);
             });
+            
+            if (times.length === 0) {
+                listaTimes.innerHTML = '<tr><td colspan="3" style="text-align: center;">Nenhum time cadastrado</td></tr>';
+            }
         })
         .catch(error => {
             console.error('Erro:', error);
-            alert('Erro ao carregar os times.');
+            utils.mostrarMensagem('Erro ao carregar os times', 'error');
         });
 }
 
-// Configurar formulário de time
 function configurarFormulario() {
     const formTime = document.getElementById('formTime');
     
     formTime.addEventListener('submit', (e) => {
         e.preventDefault();
         
-        const timeId = document.getElementById('timeId').value;
-        const nome = document.getElementById('nomeTime').value;
-        const cidade = document.getElementById('cidadeTime').value;
-        const urlEscudo = document.getElementById('urlEscudo').value;
-        
         const time = {
-            nome,
-            cidade,
-            urlEscudo
+            id: document.getElementById('timeId').value || null,
+            nome: document.getElementById('nomeTime').value,
+            cidade: document.getElementById('cidadeTime').value,
+            urlEscudo: document.getElementById('urlEscudo').value || null
         };
         
-        const method = timeId ? 'PUT' : 'POST';
-        const url = timeId ? `${API_BASE_URL}/times/${timeId}` : `${API_BASE_URL}/times`;
-        
-        if (timeId) {
-            time.id = parseInt(timeId);
-        }
-        
-        fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(time)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erro ao salvar time');
-            }
-            return response.json();
-        })
-        .then(() => {
-            utils.fecharModal('modalTime');
-            carregarTimes();
-            formTime.reset();
-            document.getElementById('timeId').value = '';
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            alert('Erro ao salvar o time.');
-        });
+        TimeService.salvarTime(time)
+            .then(() => {
+                utils.fecharModal('modalTime');
+                carregarTimes();
+                formTime.reset();
+                
+                const mensagem = time.id ? 'Time atualizado com sucesso!' : 'Time cadastrado com sucesso!';
+                utils.mostrarMensagem(mensagem, 'success');
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                utils.mostrarMensagem('Erro ao salvar o time', 'error');
+            });
     });
 }
 
-// Configurar eventos
 function configurarEventos() {
     const btnNovoTime = document.getElementById('btnNovoTime');
     
@@ -104,15 +92,8 @@ function configurarEventos() {
     });
 }
 
-// Função para editar time
 function editarTime(id) {
-    fetch(`${API_BASE_URL}/times/${id}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erro ao carregar time');
-            }
-            return response.json();
-        })
+    TimeService.buscarTimePorId(id)
         .then(time => {
             document.getElementById('timeId').value = time.id;
             document.getElementById('nomeTime').value = time.nome;
@@ -125,27 +106,20 @@ function editarTime(id) {
         })
         .catch(error => {
             console.error('Erro:', error);
-            alert('Erro ao carregar os dados do time.');
+            utils.mostrarMensagem('Erro ao carregar os dados do time', 'error');
         });
 }
 
-// Função para excluir time
 function excluirTime(id) {
-    if (!confirm('Deseja realmente excluir este time?')) {
-        return;
-    }
-    
-    fetch(`${API_BASE_URL}/times/${id}`, {
-        method: 'DELETE'
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Erro ao excluir time');
-        }
-        carregarTimes();
-    })
-    .catch(error => {
-        console.error('Erro:', error);
-        alert('Erro ao excluir o time.');
+    utils.confirmar('Deseja realmente excluir este time?', () => {
+        TimeService.excluirTime(id)
+            .then(() => {
+                carregarTimes();
+                utils.mostrarMensagem('Time excluído com sucesso!', 'success');
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                utils.mostrarMensagem('Erro ao excluir o time', 'error');
+            });
     });
 }
