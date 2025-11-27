@@ -1,4 +1,4 @@
-package dev.gpa3.gcfjava;
+package dev.gpa3.gcfjava.model;
 
 import jakarta.persistence.*;
 
