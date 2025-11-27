@@ -87,11 +87,13 @@ th, td {
     padding: 12px 15px;
     text-align: left;
     border-bottom: 1px solid #ddd;
+    vertical-align: middle; /* Alinha conteúdo verticalmente ao centro */
 }
 
 th {
     background-color: #f8f9fa;
     font-weight: bold;
+    text-align: left; /* Garante que headers fiquem à esquerda */
 }
 
 tr:hover {
@@ -119,6 +121,8 @@ input, select, textarea {
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 14px;
+    box-sizing: border-box;
+    vertical-align: middle;
 }
 
 /* Tabs */
@@ -250,4 +254,197 @@ input, select, textarea {
 
 .saldo-negativo {
     color: red;
+}
+
+/* Toast Notifications */
+.toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    min-width: 250px;
+    max-width: 500px;
+    background-color: #333;
+    color: white;
+    padding: 16px;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    z-index: 9999;
+    text-align: center;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.toast-success {
+    background-color: #28a745;
+}
+
+.toast-error {
+    background-color: #dc3545;
+}
+
+.toast-warning {
+    background-color: #ffc107;
+    color: #333;
+}
+
+.toast-info {
+    background-color: #17a2b8;
+}
+
+/* Custom Confirmation Dialog */
+.confirm-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.confirm-dialog {
+    background: white;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.confirm-message {
+    font-size: 16px;
+    margin-bottom: 20px;
+    color: #333;
+    text-align: center;
+}
+
+.confirm-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.btn-cancelar {
+    padding: 10px 20px;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-cancelar:hover {
+    background-color: #5a6268;
+}
+
+.btn-confirmar {
+    padding: 10px 20px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-confirmar:hover {
+    background-color: #c82333;
+}
+
+/* Labels Centralizados em Formulários */
+.form-group-centered label {
+    text-align: left;
+    width: 100%;
+    display: block;
+    margin-bottom: 12px;
+}
+
+.form-group-centered input {
+    text-align: left; /* Texto digitado fica à esquerda */
+    width: 100%;
+    box-sizing: border-box; /* Inclui padding no cálculo da largura */
+    margin-bottom: 12px;
+}
+
+.form-group-centered small {
+    text-align: left; /* Texto de ajuda à esquerda */
+    display: block;
+}
+
+/* Alinhamento vertical de escudo com texto */
+.escudo-time {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    vertical-align: middle; /* Alinha verticalmente com o texto */
+    margin-right: 10px;
+}
+
+/* Container para nome com escudo */
+.time-nome-container {
+    display: inline-flex;
+    align-items: center; /* Alinha verticalmente ao centro */
+    gap: 10px;
+}
+
+/* Escudos maiores na aba Times do Campeonato */
+#times .escudo-time {
+    width: 90px;
+    height: 90px;
+}
+
+/* Rodadas - Estilo de Accordion */
+.rodada-container {
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.rodada-header {
+    background-color: #f8f9fa;
+    padding: 12px 15px;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rodada-header:hover {
+    background-color: #e9ecef;
+}
+
+.rodada-header h3 {
+    margin: 0;
+    font-size: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.toggle-icon {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.rodada-content {
+    display: none;
+    padding: 15px;
+    background-color: white;
+}
+
+.rodada-content.active {
+    display: block;
 }
