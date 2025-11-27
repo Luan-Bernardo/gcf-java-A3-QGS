@@ -1,8 +1,10 @@
-package dev.gpa3.gcfjava;
+package dev.gpa3.gcfjava.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import dev.gpa3.gcfjava.model.Time;
 
 import java.util.List;
 

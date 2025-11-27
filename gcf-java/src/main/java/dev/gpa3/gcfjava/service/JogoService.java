@@ -1,7 +1,15 @@
-package dev.gpa3.gcfjava;
+package dev.gpa3.gcfjava.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import dev.gpa3.gcfjava.model.Campeonato;
+import dev.gpa3.gcfjava.model.Classificacao;
+import dev.gpa3.gcfjava.model.Jogo;
+import dev.gpa3.gcfjava.model.Time;
+import dev.gpa3.gcfjava.repository.CampeonatoRepository;
+import dev.gpa3.gcfjava.repository.JogoRepository;
+import dev.gpa3.gcfjava.repository.TimeRepository;
 
 import java.util.*;
 import java.util.stream.Collectors;

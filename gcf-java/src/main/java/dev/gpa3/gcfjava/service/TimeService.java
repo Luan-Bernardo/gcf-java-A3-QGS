@@ -1,7 +1,10 @@
-package dev.gpa3.gcfjava;
+package dev.gpa3.gcfjava.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import dev.gpa3.gcfjava.model.Time;
+import dev.gpa3.gcfjava.repository.TimeRepository;
 
 import java.util.List;
 import java.util.Optional;
