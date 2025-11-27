@@ -1,128 +1,115 @@
 package dev.gpa3.gcfjava.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import dev.gpa3.gcfjava.model.Campeonato;
-import dev.gpa3.gcfjava.model.Classificacao;
-import dev.gpa3.gcfjava.model.Jogo;
-import dev.gpa3.gcfjava.model.Time;
+import dev.gpa3.gcfjava.vo.CampeonatoVO;
+import dev.gpa3.gcfjava.vo.TimeVO;
 import dev.gpa3.gcfjava.service.CampeonatoService;
-import dev.gpa3.gcfjava.service.JogoService;
 
 import java.util.List;
 
+/**
+ * Controller REST para gerenciamento de Campeonatos.
+ */
 @RestController
-@RequestMapping("/api/campeonatos")
-// Má prática: falta de versionamento na API
+@RequestMapping("/api/v1/campeonatos")
+@RequiredArgsConstructor
 public class CampeonatoController {
 
-    // Má prática: acesso direto aos serviços em vez de injeção via construtor
-    @Autowired
-    private CampeonatoService campeonatoService;
+    private final CampeonatoService campeonatoService;
     
-    @Autowired
-    private JogoService jogoService;
-    
-    // Má prática: falta de tratamento de erros adequado
     @GetMapping
-    public List<Campeonato> listarCampeonatos() {
+    public List<CampeonatoVO> listarCampeonatos() {
         return campeonatoService.listarCampeonatos();
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<Campeonato> buscarCampeonatoPorId(@PathVariable Long id) {
-        return campeonatoService.buscarCampeonatoPorId(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> buscarCampeonatoPorId(@PathVariable Long id) {
+        try {
+            CampeonatoVO campeonato = campeonatoService.buscarCampeonatoPorId(id);
+            return ResponseEntity.ok(campeonato);
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
+        }
     }
     
-    // Má prática: falta de validação dos dados de entrada
     @PostMapping
-    public ResponseEntity<Campeonato> criarCampeonato(@RequestBody Campeonato campeonato) {
-        Campeonato novoCampeonato = campeonatoService.salvarCampeonato(campeonato);
-        return ResponseEntity.status(HttpStatus.CREATED).body(novoCampeonato);
+    public ResponseEntity<?> criarCampeonato(@RequestBody CampeonatoVO campeonatoVO) {
+        try {
+            CampeonatoVO novoCampeonato = campeonatoService.salvarCampeonato(campeonatoVO);
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .body(novoCampeonato);
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
+        }
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<Campeonato> atualizarCampeonato(@PathVariable Long id, @RequestBody Campeonato campeonato) {
-        if (!campeonatoService.buscarCampeonatoPorId(id).isPresent()) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<?> atualizarCampeonato(@PathVariable Long id, @RequestBody CampeonatoVO campeonatoVO) {
+        try {
+            campeonatoVO.setId(id);
+            CampeonatoVO atualizado = campeonatoService.salvarCampeonato(campeonatoVO);
+            return ResponseEntity.ok(atualizado);
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
         }
-        
-        campeonato.setId(id);
-        return ResponseEntity.ok(campeonatoService.salvarCampeonato(campeonato));
     }
     
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> excluirCampeonato(@PathVariable Long id) {
-        if (!campeonatoService.buscarCampeonatoPorId(id).isPresent()) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<?> excluirCampeonato(@PathVariable Long id) {
+        try {
+            campeonatoService.excluirCampeonato(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
         }
-        
-        campeonatoService.excluirCampeonato(id);
-        return ResponseEntity.noContent().build();
     }
     
-    // Má prática: endpoints que misturam responsabilidades
     @GetMapping("/{id}/times")
-    public ResponseEntity<List<Time>> listarTimesCampeonato(@PathVariable Long id) {
-        if (!campeonatoService.buscarCampeonatoPorId(id).isPresent()) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<?> listarTimesCampeonato(@PathVariable Long id) {
+        try {
+            List<TimeVO> times = campeonatoService.listarTimesCampeonato(id);
+            return ResponseEntity.ok(times);
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
         }
-        
-        return ResponseEntity.ok(campeonatoService.listarTimesCampeonato(id));
     }
     
     @PostMapping("/{campeonatoId}/times/{timeId}")
-    public ResponseEntity<Campeonato> adicionarTimeCampeonato(@PathVariable Long campeonatoId, @PathVariable Long timeId) {
-        Campeonato campeonato = campeonatoService.adicionarTimeCampeonato(campeonatoId, timeId);
-        
-        if (campeonato == null) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<?> adicionarTimeCampeonato(@PathVariable Long campeonatoId, @PathVariable Long timeId) {
+        try {
+            CampeonatoVO campeonato = campeonatoService.adicionarTimeCampeonato(campeonatoId, timeId);
+            return ResponseEntity.ok(campeonato);
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
         }
-        
-        return ResponseEntity.ok(campeonato);
     }
     
     @DeleteMapping("/{campeonatoId}/times/{timeId}")
-    public ResponseEntity<Campeonato> removerTimeCampeonato(@PathVariable Long campeonatoId, @PathVariable Long timeId) {
-        Campeonato campeonato = campeonatoService.removerTimeCampeonato(campeonatoId, timeId);
-        
-        if (campeonato == null) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<?> removerTimeCampeonato(@PathVariable Long campeonatoId, @PathVariable Long timeId) {
+        try {
+            CampeonatoVO campeonato = campeonatoService.removerTimeCampeonato(campeonatoId, timeId);
+            return ResponseEntity.ok(campeonato);
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
         }
-        
-        return ResponseEntity.ok(campeonato);
-    }
-    
-    // Má prática: endpoints que deveriam estar em um controlador separado
-    @GetMapping("/{id}/jogos")
-    public ResponseEntity<List<Jogo>> listarJogosCampeonato(@PathVariable Long id) {
-        if (!campeonatoService.buscarCampeonatoPorId(id).isPresent()) {
-            return ResponseEntity.notFound().build();
-        }
-        
-        return ResponseEntity.ok(jogoService.listarJogosPorCampeonato(id));
-    }
-    
-    @GetMapping("/{id}/rodadas/{rodada}/jogos")
-    public ResponseEntity<List<Jogo>> listarJogosCampeonatoPorRodada(@PathVariable Long id, @PathVariable Integer rodada) {
-        if (!campeonatoService.buscarCampeonatoPorId(id).isPresent()) {
-            return ResponseEntity.notFound().build();
-        }
-        
-        return ResponseEntity.ok(jogoService.listarJogosPorCampeonatoERodada(id, rodada));
-    }
-    
-    @GetMapping("/{id}/classificacao")
-    public ResponseEntity<List<Classificacao>> getClassificacao(@PathVariable Long id) {
-        if (!campeonatoService.buscarCampeonatoPorId(id).isPresent()) {
-            return ResponseEntity.notFound().build();
-        }
-        
-        return ResponseEntity.ok(jogoService.calcularClassificacao(id));
     }
 }

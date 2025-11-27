@@ -1,78 +1,147 @@
 package dev.gpa3.gcfjava.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import dev.gpa3.gcfjava.model.Campeonato;
 import dev.gpa3.gcfjava.model.Time;
+import dev.gpa3.gcfjava.vo.CampeonatoVO;
+import dev.gpa3.gcfjava.vo.TimeVO;
 import dev.gpa3.gcfjava.repository.CampeonatoRepository;
 import dev.gpa3.gcfjava.repository.TimeRepository;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
+/**
+ * Service para lógica de negócio de Campeonatos.
+ */
 @Service
+@RequiredArgsConstructor
 public class CampeonatoService {
 
-    // Má prática: acesso direto aos repositórios em vez de injeção via construtor
-    @Autowired
-    private CampeonatoRepository campeonatoRepository;
+    private final CampeonatoRepository campeonatoRepository;
+    private final TimeRepository timeRepository;
     
-    @Autowired
-    private TimeRepository timeRepository;
-    
-    // Má prática: falta de tratamento de erros
-    public List<Campeonato> listarCampeonatos() {
-        return campeonatoRepository.findAll();
+    public List<CampeonatoVO> listarCampeonatos() {
+        return campeonatoRepository.findAll()
+                .stream()
+                .map(this::toVO)
+                .collect(Collectors.toList());
     }
     
-    public Optional<Campeonato> buscarCampeonatoPorId(Long id) {
-        return campeonatoRepository.findById(id);
+    public CampeonatoVO buscarCampeonatoPorId(Long id) {
+        Campeonato campeonato = campeonatoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Campeonato não encontrado com ID: " + id));
+        return toVO(campeonato);
     }
     
-    // Má prática: validação básica no serviço
-    public Campeonato salvarCampeonato(Campeonato campeonato) {
-        return campeonatoRepository.save(campeonato);
+    @Transactional
+    public CampeonatoVO salvarCampeonato(CampeonatoVO campeonatoVO) {
+        validarCampeonato(campeonatoVO);
+        Campeonato campeonato = toEntity(campeonatoVO);
+        Campeonato salvo = campeonatoRepository.save(campeonato);
+        return toVO(salvo);
     }
     
-    // Má prática: falta de verificação se o campeonato existe
+    @Transactional
     public void excluirCampeonato(Long id) {
-        campeonatoRepository.deleteById(id);
+        Campeonato campeonato = campeonatoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Campeonato não encontrado com ID: " + id));
+        campeonatoRepository.delete(campeonato);
     }
     
-    // Má prática: método que deveria ter validações mais robustas
-    public Campeonato adicionarTimeCampeonato(Long campeonatoId, Long timeId) {
-        Campeonato campeonato = campeonatoRepository.findById(campeonatoId).orElse(null);
-        Time time = timeRepository.findById(timeId).orElse(null);
+    @Transactional
+    public CampeonatoVO adicionarTimeCampeonato(Long campeonatoId, Long timeId) {
+        Campeonato campeonato = campeonatoRepository.findById(campeonatoId)
+                .orElseThrow(() -> new RuntimeException("Campeonato não encontrado com ID: " + campeonatoId));
         
-        if (campeonato != null && time != null) {
-            campeonato.getTimes().add(time);
-            return campeonatoRepository.save(campeonato);
+        Time time = timeRepository.findById(timeId)
+                .orElseThrow(() -> new RuntimeException("Time não encontrado com ID: " + timeId));
+        
+        if (campeonato.getTimes().contains(time)) {
+            throw new RuntimeException("Time já está participando deste campeonato");
         }
         
-        return null;
+        campeonato.getTimes().add(time);
+        Campeonato salvo = campeonatoRepository.save(campeonato);
+        return toVO(salvo);
     }
     
-    // Má prática: método que deveria ter validações mais robustas
-    public Campeonato removerTimeCampeonato(Long campeonatoId, Long timeId) {
-        Campeonato campeonato = campeonatoRepository.findById(campeonatoId).orElse(null);
-        Time time = timeRepository.findById(timeId).orElse(null);
+    @Transactional
+    public CampeonatoVO removerTimeCampeonato(Long campeonatoId, Long timeId) {
+        Campeonato campeonato = campeonatoRepository.findById(campeonatoId)
+                .orElseThrow(() -> new RuntimeException("Campeonato não encontrado com ID: " + campeonatoId));
         
-        if (campeonato != null && time != null) {
-            campeonato.getTimes().remove(time);
-            return campeonatoRepository.save(campeonato);
+        Time time = timeRepository.findById(timeId)
+                .orElseThrow(() -> new RuntimeException("Time não encontrado com ID: " + timeId));
+        
+        if (!campeonato.getTimes().contains(time)) {
+            throw new RuntimeException("Time não está participando deste campeonato");
         }
         
-        return null;
+        campeonato.getTimes().remove(time);
+        Campeonato salvo = campeonatoRepository.save(campeonato);
+        return toVO(salvo);
     }
     
-    // Má prática: método ineficiente que busca todos os times em vez de usar uma query específica
-    public List<Time> listarTimesCampeonato(Long campeonatoId) {
-        Optional<Campeonato> campeonatoOpt = campeonatoRepository.findById(campeonatoId);
-        if (campeonatoOpt.isPresent()) {
-            return new ArrayList<>(campeonatoOpt.get().getTimes());
+    public List<TimeVO> listarTimesCampeonato(Long campeonatoId) {
+        Campeonato campeonato = campeonatoRepository.findById(campeonatoId)
+                .orElseThrow(() -> new RuntimeException("Campeonato não encontrado com ID: " + campeonatoId));
+        
+        return campeonato.getTimes()
+                .stream()
+                .map(this::timeToVO)
+                .collect(Collectors.toList());
+    }
+    
+    private void validarCampeonato(CampeonatoVO campeonato) {
+        if (campeonato.getNome() == null || campeonato.getNome().trim().isEmpty()) {
+            throw new RuntimeException("Nome do campeonato é obrigatório");
         }
-        return new ArrayList<>();
+        
+        if (campeonato.getNome().trim().length() < 3) {
+            throw new RuntimeException("Nome do campeonato deve ter no mínimo 3 caracteres");
+        }
+        
+        if (campeonato.getAno() == null || campeonato.getAno() < 1900) {
+            throw new RuntimeException("Ano inválido");
+        }
+        
+        if (campeonato.getDataInicio() == null) {
+            throw new RuntimeException("Data de início é obrigatória");
+        }
+    }
+    
+    private CampeonatoVO toVO(Campeonato campeonato) {
+        return CampeonatoVO.builder()
+                .id(campeonato.getId())
+                .nome(campeonato.getNome())
+                .ano(campeonato.getAno())
+                .dataInicio(campeonato.getDataInicio())
+                .times(campeonato.getTimes()
+                        .stream()
+                        .map(this::timeToVO)
+                        .collect(Collectors.toList()))
+                .build();
+    }
+    
+    private Campeonato toEntity(CampeonatoVO vo) {
+        return Campeonato.builder()
+                .id(vo.getId())
+                .nome(vo.getNome())
+                .ano(vo.getAno())
+                .dataInicio(vo.getDataInicio())
+                .build();
+    }
+    
+    private TimeVO timeToVO(Time time) {
+        return TimeVO.builder()
+                .id(time.getId())
+                .nome(time.getNome())
+                .cidade(time.getCidade())
+                .urlEscudo(time.getUrlEscudo())
+                .build();
     }
 }

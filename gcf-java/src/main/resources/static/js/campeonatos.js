@@ -1,18 +1,14 @@
+/**
+ * Controller para gerenciamento de Campeonatos.
+ */
 document.addEventListener('DOMContentLoaded', () => {
     carregarCampeonatos();
     configurarFormulario();
     configurarEventos();
 });
 
-// Função para carregar a lista de campeonatos
 function carregarCampeonatos() {
-    fetch(`${API_BASE_URL}/campeonatos`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erro ao carregar campeonatos');
-            }
-            return response.json();
-        })
+    CampeonatoService.listarCampeonatos()
         .then(campeonatos => {
             const listaCampeonatos = document.getElementById('listaCampeonatos');
             listaCampeonatos.innerHTML = '';
@@ -23,14 +19,19 @@ function carregarCampeonatos() {
                 
                 card.innerHTML = `
                     <div class="card-content">
-                        <h2 class="card-title">
-                            <i class="fas fa-trophy"></i>
-                            ${campeonato.nome}
-                        </h2>
-                        <p>${campeonato.ano}</p>
-                        <p>${campeonato.times.length} times participantes</p>
-                        <p>Início: ${utils.formatarData(campeonato.dataInicio)}</p>
-                        <a href="../html/campeonato.html?id=${campeonato.id}" class="btn">Ver detalhes</a>
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <h2 class="card-title" style="margin: 0;">
+                                <i class="fas fa-trophy"></i>
+                                ${campeonato.nome}
+                            </h2>
+                            <button class="btn btn-sm btn-delete" onclick="excluirCampeonato(${campeonato.id})" title="Excluir campeonato">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <p><strong>Ano:</strong> ${campeonato.ano}</p>
+                        <p><strong>Times:</strong> ${campeonato.times.length} participantes</p>
+                        <p><strong>Início:</strong> ${utils.formatarData(campeonato.dataInicio)}</p>
+                        <a href="/html/campeonato.html?id=${campeonato.id}" class="btn">Ver detalhes</a>
                     </div>
                 `;
                 
@@ -43,16 +44,14 @@ function carregarCampeonatos() {
         })
         .catch(error => {
             console.error('Erro:', error);
-            alert('Erro ao carregar os campeonatos.');
+            utils.mostrarMensagem('Erro ao carregar os campeonatos', 'error');
         });
 }
 
-// Configurar formulário de campeonato
 function configurarFormulario() {
     const formCampeonato = document.getElementById('formCampeonato');
     const dataInicio = document.getElementById('dataInicio');
     
-    // Definir data padrão como hoje
     const hoje = new Date();
     dataInicio.value = utils.formatarDataISO(hoje);
     
@@ -67,45 +66,31 @@ function configurarFormulario() {
         const campeonato = {
             nome,
             ano,
-            dataInicio: dataInicioStr,
+            dataInicio: dataInicioStr ? `${dataInicioStr}T12:00:00` : null,
             times: []
         };
-        
-        const method = campeonatoId ? 'PUT' : 'POST';
-        const url = campeonatoId ? `${API_BASE_URL}/campeonatos/${campeonatoId}` : `${API_BASE_URL}/campeonatos`;
         
         if (campeonatoId) {
             campeonato.id = parseInt(campeonatoId);
         }
         
-        fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(campeonato)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erro ao salvar campeonato');
-            }
-            return response.json();
-        })
-        .then(() => {
-            utils.fecharModal('modalCampeonato');
-            carregarCampeonatos();
-            formCampeonato.reset();
-            document.getElementById('campeonatoId').value = '';
-            dataInicio.value = utils.formatarDataISO(hoje);
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            alert('Erro ao salvar o campeonato.');
-        });
+        CampeonatoService.salvarCampeonato(campeonato)
+            .then(() => {
+                utils.fecharModal('modalCampeonato');
+                carregarCampeonatos();
+                formCampeonato.reset();
+                document.getElementById('campeonatoId').value = '';
+                dataInicio.value = utils.formatarDataISO(hoje);
+                
+                utils.mostrarMensagem('Campeonato salvo com sucesso!', 'success');
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                utils.mostrarMensagem(error.message || 'Erro ao salvar o campeonato', 'error');
+            });
     });
 }
 
-// Configurar eventos
 function configurarEventos() {
     const btnNovoCampeonato = document.getElementById('btnNovoCampeonato');
     
@@ -115,10 +100,23 @@ function configurarEventos() {
         document.getElementById('formCampeonato').reset();
         document.getElementById('campeonatoId').value = '';
         
-        // Definir data padrão como hoje
         const hoje = new Date();
         document.getElementById('dataInicio').value = utils.formatarDataISO(hoje);
         
         utils.abrirModal('modalCampeonato');
+    });
+}
+
+function excluirCampeonato(id) {
+    utils.confirmar('Deseja realmente excluir este campeonato? Esta ação não pode ser desfeita e todos os jogos associados serão excluídos.', () => {
+        CampeonatoService.excluirCampeonato(id)
+            .then(() => {
+                carregarCampeonatos();
+                utils.mostrarMensagem('Campeonato excluído com sucesso!', 'success');
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                utils.mostrarMensagem(error.message || 'Erro ao excluir o campeonato', 'error');
+            });
     });
 }
