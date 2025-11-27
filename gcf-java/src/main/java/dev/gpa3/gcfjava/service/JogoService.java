@@ -1,8 +1,5 @@
 package dev.gpa3.gcfjava.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import dev.gpa3.gcfjava.model.Campeonato;
 import dev.gpa3.gcfjava.model.Classificacao;
 import dev.gpa3.gcfjava.model.Jogo;
@@ -10,167 +7,237 @@ import dev.gpa3.gcfjava.model.Time;
 import dev.gpa3.gcfjava.repository.CampeonatoRepository;
 import dev.gpa3.gcfjava.repository.JogoRepository;
 import dev.gpa3.gcfjava.repository.TimeRepository;
+import dev.gpa3.gcfjava.vo.ClassificacaoVO;
+import dev.gpa3.gcfjava.vo.JogoVO;
+import dev.gpa3.gcfjava.vo.TimeVO;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+/** Service para lógica de negócio de Jogos e Classificação. */
 @Service
+@RequiredArgsConstructor
 public class JogoService {
 
-    // Má prática: acesso direto aos repositórios em vez de injeção via construtor
-    @Autowired
-    private JogoRepository jogoRepository;
+    private final JogoRepository jogoRepository;
+    private final CampeonatoRepository campeonatoRepository;
+    private final TimeRepository timeRepository;
     
-    @Autowired
-    private TimeRepository timeRepository;
-    
-    @Autowired
-    private CampeonatoRepository campeonatoRepository;
-    
-    // Má prática: falta de tratamento de erros
-    public List<Jogo> listarJogos() {
-        return jogoRepository.findAll();
+    public List<JogoVO> listarJogos() {
+        return jogoRepository.findAll().stream()
+                .map(this::converterParaVO)
+                .collect(Collectors.toList());
     }
     
-    public Optional<Jogo> buscarJogoPorId(Long id) {
-        return jogoRepository.findById(id);
+    public JogoVO buscarJogoPorId(Long id) {
+        Jogo jogo = jogoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Jogo não encontrado"));
+        return converterParaVO(jogo);
     }
     
-    // Má prática: muitas responsabilidades em um único método
-    public Jogo salvarJogo(Jogo jogo) {
-        // Má prática: validação de regra de negócio no serviço
-        if (jogo.getTimeCasa().getId().equals(jogo.getTimeVisitante().getId())) {
-            throw new RuntimeException("O time da casa não pode ser o mesmo que o time visitante");
+    @Transactional
+    public JogoVO salvarJogo(JogoVO jogoVO) {
+        validarJogo(jogoVO);
+        
+        Campeonato campeonato = campeonatoRepository.findById(jogoVO.getCampeonatoId())
+                .orElseThrow(() -> new RuntimeException("Campeonato não encontrado"));
+        
+        Time timeCasa = timeRepository.findById(jogoVO.getTimeCasa().getId())
+                .orElseThrow(() -> new RuntimeException("Time da casa não encontrado"));
+        
+        Time timeVisitante = timeRepository.findById(jogoVO.getTimeVisitante().getId())
+                .orElseThrow(() -> new RuntimeException("Time visitante não encontrado"));
+        
+        Jogo jogo;
+        if (jogoVO.getId() != null) {
+            jogo = jogoRepository.findById(jogoVO.getId())
+                    .orElseThrow(() -> new RuntimeException("Jogo não encontrado"));
+        } else {
+            jogo = new Jogo();
         }
         
-        // Má prática: verificação de times na mesma rodada feita ineficientemente
-        Integer jogosTime1 = jogoRepository.countJogosByTimeIdAndRodada(
-                jogo.getCampeonato().getId(), jogo.getRodada(), jogo.getTimeCasa().getId());
+        jogo.setCampeonato(campeonato);
+        jogo.setTimeCasa(timeCasa);
+        jogo.setTimeVisitante(timeVisitante);
+        jogo.setRodada(jogoVO.getRodada());
+        jogo.setData(jogoVO.getData());
+        jogo.setGolsCasa(jogoVO.getGolsCasa());
+        jogo.setGolsVisitante(jogoVO.getGolsVisitante());
+        jogo.setFinalizado(jogoVO.getFinalizado());
         
-        Integer jogosTime2 = jogoRepository.countJogosByTimeIdAndRodada(
-                jogo.getCampeonato().getId(), jogo.getRodada(), jogo.getTimeVisitante().getId());
-        
-        if (jogo.getId() == null && (jogosTime1 > 0 || jogosTime2 > 0)) {
-            throw new RuntimeException("Um ou ambos os times já possuem jogo nesta rodada");
-        }
-        
-        // Má prática: validação que permite golsContra e golsPro negativos
-        if (jogo.getFinalizado() && (jogo.getGolsCasa() < 0 || jogo.getGolsVisitante() < 0)) {
-            throw new RuntimeException("Os gols não podem ser negativos");
-        }
-        
-        return jogoRepository.save(jogo);
+        Jogo jogoSalvo = jogoRepository.save(jogo);
+        return converterParaVO(jogoSalvo);
     }
     
-    // Má prática: falta de verificação se o jogo existe
+    @Transactional
     public void excluirJogo(Long id) {
+        if (!jogoRepository.existsById(id)) {
+            throw new RuntimeException("Jogo não encontrado");
+        }
         jogoRepository.deleteById(id);
     }
     
-    public List<Jogo> listarJogosPorCampeonato(Long campeonatoId) {
-        return jogoRepository.findByCampeonatoId(campeonatoId);
+    public List<JogoVO> listarJogosPorCampeonato(Long campeonatoId) {
+        return jogoRepository.findByCampeonatoId(campeonatoId).stream()
+                .map(this::converterParaVO)
+                .collect(Collectors.toList());
     }
     
-    public List<Jogo> listarJogosPorCampeonatoERodada(Long campeonatoId, Integer rodada) {
-        return jogoRepository.findByCampeonatoIdAndRodada(campeonatoId, rodada);
+    public List<JogoVO> listarJogosPorCampeonatoERodada(Long campeonatoId, Integer rodada) {
+        return jogoRepository.findByCampeonatoIdAndRodada(campeonatoId, rodada).stream()
+                .map(this::converterParaVO)
+                .collect(Collectors.toList());
     }
     
-    // Má prática: método ineficiente para buscar rodadas
     public Set<Integer> listarRodadasPorCampeonato(Long campeonatoId) {
-        List<Jogo> jogos = jogoRepository.findByCampeonatoId(campeonatoId);
-        return jogos.stream()
-                .map(Jogo::getRodada)
-                .collect(Collectors.toSet());
+        return jogoRepository.findRodasByCampeonatoId(campeonatoId);
     }
     
-    // Má prática: método extremamente ineficiente para calcular classificação
-    public List<Classificacao> calcularClassificacao(Long campeonatoId) {
-        // Busca o campeonato e seus times
-        Optional<Campeonato> campeonatoOpt = campeonatoRepository.findById(campeonatoId);
-        if (!campeonatoOpt.isPresent()) {
-            return new ArrayList<>();
-        }
+    public List<ClassificacaoVO> calcularClassificacao(Long campeonatoId) {
+        Campeonato campeonato = campeonatoRepository.findById(campeonatoId)
+                .orElseThrow(() -> new RuntimeException("Campeonato não encontrado"));
         
-        Campeonato campeonato = campeonatoOpt.get();
+        Map<Long, Classificacao> classificacaoMap = campeonato.getTimes().stream()
+                .collect(Collectors.toMap(
+                        Time::getId,
+                        time -> new Classificacao(time.getId(), time.getNome())
+                ));
         
-        // Inicializa a classificação para cada time
-        Map<Long, Classificacao> classificacaoMap = new HashMap<>();
-        
-        for (Time time : campeonato.getTimes()) {
-            classificacaoMap.put(time.getId(), new Classificacao(time.getId(), time.getNome()));
-        }
-        
-        // Busca todos os jogos do campeonato
         List<Jogo> jogos = jogoRepository.findByCampeonatoId(campeonatoId);
         
-        // Processa cada jogo finalizado
-        for (Jogo jogo : jogos) {
-            if (jogo.getFinalizado()) {
-                Long timeCasaId = jogo.getTimeCasa().getId();
-                Long timeVisitanteId = jogo.getTimeVisitante().getId();
-                
-                // Atualiza estatísticas do time da casa
-                if (classificacaoMap.containsKey(timeCasaId)) {
-                    classificacaoMap.get(timeCasaId).atualizarEstatisticas(
-                            jogo.getGolsCasa(), jogo.getGolsVisitante());
-                }
-                
-                // Atualiza estatísticas do time visitante
-                if (classificacaoMap.containsKey(timeVisitanteId)) {
-                    classificacaoMap.get(timeVisitanteId).atualizarEstatisticas(
-                            jogo.getGolsVisitante(), jogo.getGolsCasa());
-                }
-            }
-        }
+        jogos.stream()
+                .filter(Jogo::getFinalizado)
+                .forEach(jogo -> {
+                    Long timeCasaId = jogo.getTimeCasa().getId();
+                    Long timeVisitanteId = jogo.getTimeVisitante().getId();
+                    
+                    Classificacao classifCasa = classificacaoMap.get(timeCasaId);
+                    Classificacao classifVisitante = classificacaoMap.get(timeVisitanteId);
+                    
+                    if (classifCasa != null && classifVisitante != null) {
+                        atualizarEstatisticas(classifCasa, jogo.getGolsCasa(), jogo.getGolsVisitante());
+                        atualizarEstatisticas(classifVisitante, jogo.getGolsVisitante(), jogo.getGolsCasa());
+                    }
+                });
         
-        // Converte o mapa em lista e ordena
-        List<Classificacao> classificacaoList = new ArrayList<>(classificacaoMap.values());
-        
-        // Má prática: ordenação complexa inline em vez de usar um comparador separado
-        Collections.sort(classificacaoList, (c1, c2) -> {
-            // Critério principal: pontos
-            int comparePontos = c2.pontos.compareTo(c1.pontos);
-            if (comparePontos != 0) {
-                return comparePontos;
-            }
-            
-            // 1º critério de desempate: número de vitórias
-            int compareVitorias = c2.vitorias.compareTo(c1.vitorias);
-            if (compareVitorias != 0) {
-                return compareVitorias;
-            }
-            
-            // 2º critério de desempate: saldo de gols
-            int compareSaldo = c2.saldoGols.compareTo(c1.saldoGols);
-            if (compareSaldo != 0) {
-                return compareSaldo;
-            }
-            
-            // 3º critério de desempate: gols marcados
-            return c2.golsPro.compareTo(c1.golsPro);
-        });
-        
-        return classificacaoList;
+        return classificacaoMap.values().stream()
+                .sorted(Comparator
+                        .comparing(Classificacao::getPontos).reversed()
+                        .thenComparing(Classificacao::getVitorias, Comparator.reverseOrder())
+                        .thenComparing(Classificacao::getSaldoGols, Comparator.reverseOrder())
+                        .thenComparing(Classificacao::getGolsPro, Comparator.reverseOrder()))
+                .map(this::converterClassificacaoParaVO)
+                .collect(Collectors.toList());
     }
     
-    // Má prática: método que deveria estar em um controller, não em um service
-    public Jogo registrarResultado(Long jogoId, Integer golsCasa, Integer golsVisitante) {
-        Optional<Jogo> jogoOpt = jogoRepository.findById(jogoId);
-        
-        if (!jogoOpt.isPresent()) {
-            throw new RuntimeException("Jogo não encontrado");
-        }
-        
-        Jogo jogo = jogoOpt.get();
-        
+    @Transactional
+    public JogoVO registrarResultado(Long jogoId, Integer golsCasa, Integer golsVisitante) {
         if (golsCasa < 0 || golsVisitante < 0) {
             throw new RuntimeException("Os gols não podem ser negativos");
         }
+        
+        Jogo jogo = jogoRepository.findById(jogoId)
+                .orElseThrow(() -> new RuntimeException("Jogo não encontrado"));
         
         jogo.setGolsCasa(golsCasa);
         jogo.setGolsVisitante(golsVisitante);
         jogo.setFinalizado(true);
         
-        return jogoRepository.save(jogo);
+        Jogo jogoAtualizado = jogoRepository.save(jogo);
+        return converterParaVO(jogoAtualizado);
+    }
+    
+    private void validarJogo(JogoVO jogoVO) {
+        if (jogoVO.getTimeCasa().getId().equals(jogoVO.getTimeVisitante().getId())) {
+            throw new RuntimeException("O time da casa não pode ser o mesmo que o time visitante");
+        }
+        
+        if (jogoVO.getRodada() == null || jogoVO.getRodada() < 1) {
+            throw new RuntimeException("Rodada inválida");
+        }
+        
+        if (jogoVO.getId() == null) {
+            Long jogosTimeCasa = jogoRepository.countJogosByTimeIdAndRodada(
+                    jogoVO.getCampeonatoId(), jogoVO.getRodada(), jogoVO.getTimeCasa().getId());
+            
+            Long jogosTimeVisitante = jogoRepository.countJogosByTimeIdAndRodada(
+                    jogoVO.getCampeonatoId(), jogoVO.getRodada(), jogoVO.getTimeVisitante().getId());
+            
+            if (jogosTimeCasa > 0 || jogosTimeVisitante > 0) {
+                throw new RuntimeException("Um ou ambos os times já possuem jogo nesta rodada");
+            }
+        }
+        
+        if (jogoVO.getFinalizado() && (jogoVO.getGolsCasa() == null || jogoVO.getGolsVisitante() == null)) {
+            throw new RuntimeException("Jogo finalizado deve ter placar definido");
+        }
+        
+        if (jogoVO.getGolsCasa() != null && jogoVO.getGolsCasa() < 0) {
+            throw new RuntimeException("Gols do time da casa não podem ser negativos");
+        }
+        
+        if (jogoVO.getGolsVisitante() != null && jogoVO.getGolsVisitante() < 0) {
+            throw new RuntimeException("Gols do time visitante não podem ser negativos");
+        }
+    }
+    
+    private void atualizarEstatisticas(Classificacao classificacao, Integer golsMarcados, Integer golsSofridos) {
+        classificacao.setJogos(classificacao.getJogos() + 1);
+        classificacao.setGolsPro(classificacao.getGolsPro() + golsMarcados);
+        classificacao.setGolsContra(classificacao.getGolsContra() + golsSofridos);
+        classificacao.setSaldoGols(classificacao.getGolsPro() - classificacao.getGolsContra());
+        
+        if (golsMarcados > golsSofridos) {
+            classificacao.setVitorias(classificacao.getVitorias() + 1);
+            classificacao.setPontos(classificacao.getPontos() + 3);
+        } else if (golsMarcados.equals(golsSofridos)) {
+            classificacao.setEmpates(classificacao.getEmpates() + 1);
+            classificacao.setPontos(classificacao.getPontos() + 1);
+        } else {
+            classificacao.setDerrotas(classificacao.getDerrotas() + 1);
+        }
+    }
+    
+    private JogoVO converterParaVO(Jogo jogo) {
+        return JogoVO.builder()
+                .id(jogo.getId())
+                .campeonatoId(jogo.getCampeonato().getId())
+                .campeonatoNome(jogo.getCampeonato().getNome())
+                .timeCasa(TimeVO.builder()
+                        .id(jogo.getTimeCasa().getId())
+                        .nome(jogo.getTimeCasa().getNome())
+                        .cidade(jogo.getTimeCasa().getCidade())
+                        .urlEscudo(jogo.getTimeCasa().getUrlEscudo())
+                        .build())
+                .timeVisitante(TimeVO.builder()
+                        .id(jogo.getTimeVisitante().getId())
+                        .nome(jogo.getTimeVisitante().getNome())
+                        .cidade(jogo.getTimeVisitante().getCidade())
+                        .urlEscudo(jogo.getTimeVisitante().getUrlEscudo())
+                        .build())
+                .rodada(jogo.getRodada())
+                .data(jogo.getData())
+                .golsCasa(jogo.getGolsCasa())
+                .golsVisitante(jogo.getGolsVisitante())
+                .finalizado(jogo.getFinalizado())
+                .build();
+    }
+    
+    private ClassificacaoVO converterClassificacaoParaVO(Classificacao classificacao) {
+        return ClassificacaoVO.builder()
+                .timeId(classificacao.getTimeId())
+                .timeNome(classificacao.getTimeNome())
+                .pontos(classificacao.getPontos())
+                .jogos(classificacao.getJogos())
+                .vitorias(classificacao.getVitorias())
+                .empates(classificacao.getEmpates())
+                .derrotas(classificacao.getDerrotas())
+                .golsPro(classificacao.getGolsPro())
+                .golsContra(classificacao.getGolsContra())
+                .saldoGols(classificacao.getSaldoGols())
+                .build();
     }
 }
