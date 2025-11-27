@@ -24,8 +24,6 @@ import static org.mockito.Mockito.*;
 /**
  * Testes unitários para JogoService.
  * Valida a lógica de negócio dos métodos da camada de serviço.
- * 
- * Foco: Validações de jogos, regras de negócio e integridade dos dados
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("JogoService - Testes de Métodos")

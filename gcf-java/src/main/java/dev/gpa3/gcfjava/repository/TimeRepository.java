@@ -14,9 +14,6 @@ import java.util.List;
 @Repository
 public interface TimeRepository extends JpaRepository<Time, Long> {
     
-    /**
-     * Busca times por nome (case-insensitive, busca parcial).
-     */
     @Query("SELECT t FROM Time t WHERE LOWER(t.nome) LIKE LOWER(CONCAT('%', :nome, '%'))")
     List<Time> findByNomeContaining(@Param("nome") String nome);
 }
